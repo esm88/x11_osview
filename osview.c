@@ -17,9 +17,8 @@ int main(int argc, char *argv[]) {
 	GC gc;
 	XGCValues vals;
 	unsigned short win_w, win_h, bar_x, bar_y, bar_w, bar_h, pos;
-	float us, sy;
-	us = 0.0;
-	sy = 0.12;
+	float us = 0, sy = 0, id = 0;
+	int i, j, c;
 	char *win_name = "x11_osview";
 	XSizeHints *size_hints;
 	XTextProperty title;
@@ -107,11 +106,57 @@ int main(int argc, char *argv[]) {
 
 		XFlush(disp);
 		usleep(50000); /* This is bad practice, but it's simple */
-		if(us < 0.8)
-			us += 0.01;
-		else
-			us = 0.1;
 
 		printf("Queue: %d\n", XEventsQueued(disp, win));
+
+		FILE *fp;
+		fp = fopen("/proc/stat", "r");
+
+		int c, i, j;
+		char stats[10][20];
+		int user, sys, idle, wait, irq;
+		float total = 0;
+		int old_sys, old_user, old_idle;
+		float old_total;
+
+		for(i = 0; i < 11; i++){
+			j = 0;
+			while((c = getc(fp)) != ' ') {
+				stats[i][j++] = c;
+			}
+			stats[i][j] = '\0';
+		}
+		for(i = 0; i < 11; i++)
+			printf("%d: %s\n", i, stats[i]);
+
+		user = atoi(stats[2]) + atoi(stats[3]);
+		sys = atoi(stats[4]);
+		idle = atoi(stats[5]);
+		wait = atoi(stats[6]);
+		irq = atoi(stats[8]);
+		printf("\nuser: %d\n", user - old_user);
+		printf("sys : %d\n", sys - old_sys);
+		printf("idle: %d\n", idle - old_idle);
+		/* printf("wait: %d\n", wait);
+		printf("irq: %d\n", irq); */
+		total = user + sys + idle + wait + irq;
+		/* printf("tot: %f\n", total);
+		printf("old: %f\n", old_total); */
+		printf("dif: %f\n", total - old_total);
+
+		us = (user - old_user) / 448.0;
+		sy = (sys - old_sys) / 448.0;
+		id = (idle - old_idle) / 448.0;
+		printf("us: %f\n", us);
+		printf("sy: %f\n", sy);
+		printf("id: %f\n", id);
+
+		old_total = total;
+		old_sys = sys;
+		old_idle = idle;
+		old_user = user;
+
+		fclose(fp);
+		usleep(1000000);
 	}
 }
