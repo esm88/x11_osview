@@ -16,16 +16,19 @@ float us, sy, id, wa, in;
 
 int main(int argc, char *argv[]) {
 
-	char *win_name = "x11_osview";
 	XSizeHints *size_hints;
 	XTextProperty title;
 	XGCValues vals;
 	void drawbar(void);
 	unsigned int user, sys, idle, wait, irq, total = 0;
 	unsigned int old_sys, old_user, old_idle, old_wait, old_irq;
+    char hostname[20];
+    char *host = hostname;
 	FILE *fp;
 	int c, i, j;
 	char stats[10][20];
+
+    gethostname(&hostname, 19);
 
 	if(!(disp = XOpenDisplay(0))) {		/* Use $DISPLAY */
 		fprintf(stderr, "Error: Can't connect to X server\n" 
@@ -46,7 +49,7 @@ int main(int argc, char *argv[]) {
 	size_hints->width_inc = 10;
 	XSetWMNormalHints(disp, win, size_hints);
 
-	XStringListToTextProperty(&win_name, 1, &title);
+	XStringListToTextProperty(&host, 1, &title);
 	XSetWMName(disp, win, &title);
 
 	/* Program is output only, so no input events needed */
