@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
 
 	size_hints = XAllocSizeHints();
 	size_hints->flags = PMinSize | PResizeInc;
-	size_hints->min_width = 200;
+	size_hints->min_width = 400;
 	size_hints->min_height = 50;
 	size_hints->width_inc = 10;
 	XSetWMNormalHints(disp, win, size_hints);
