@@ -104,7 +104,8 @@ int main(int argc, char *argv[]) {
 		/* Check for window resize (and other things) */
 		while(XCheckMaskEvent(disp, StructureNotifyMask, &event)) {
             /* assume window was resized */
-            if(win_w) { /* Only change if >0. Avoids desktop switch bug */
+            if(event.xconfigure.width) {
+            /* Only change if >0. Avoids desktop switch bug */
                 win_w = event.xconfigure.width;
                 win_h = event.xconfigure.height;
             }
