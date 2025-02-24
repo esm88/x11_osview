@@ -7,6 +7,13 @@
 #include <X11/Xutil.h>
 /* #include <X11/Xos.h> */
 
+#define RED 0xFF0000
+#define GREEN 0x00FF00
+#define BLUE 0x0000FF
+#define YELLOW 0xFFFF00
+#define CYAN 0x00FFFF
+#define GRAY 0x808080
+
 Display *disp;
 Window win;
 XEvent event;
@@ -16,6 +23,7 @@ float us, sy, id, wa, in;
 
 int main(int argc, char *argv[]) {
 
+    int resize = 1;
 	XSizeHints *size_hints;
 	XTextProperty title;
 	XGCValues vals;
@@ -56,7 +64,7 @@ int main(int argc, char *argv[]) {
 	/* Program is output only, so no input events needed */
 	XSelectInput(disp, win, ExposureMask | StructureNotifyMask);
 
-    winattr.backing_store = Always; /* Modern systems have plenty RAM */
+    winattr.backing_store = Always; /* Modern systems have _plenty_ RAM */
     XChangeWindowAttributes(disp, win, CWBackingStore, &winattr);
 
 	XMapWindow(disp, win);
@@ -75,6 +83,9 @@ int main(int argc, char *argv[]) {
 	gc = XCreateGC(disp, win, 0, &vals);
 	XSetLineAttributes(disp, gc, 2, 0, 0, 0);
     XSetFont(disp, gc, XLoadFont(disp, "-*-times-*-i-*-180-100-*"));
+
+    /* Re-send the initial expose event */
+    XSendEvent(disp, win, True, ExposureMask, &event);
 
 	while(1) {
 
@@ -108,37 +119,65 @@ int main(int argc, char *argv[]) {
 		fclose(fp);
 
 		/* Check for window resize (and other things) */
-		while(XCheckMaskEvent(disp, StructureNotifyMask, &event)) {
-            /* assume window was resized */
-            if(event.xconfigure.width) {
-            /* Only change if >0. Avoids desktop switch bug */
+        /* CheckMaskEvent is used instead of CheckTypedEvent so that the */
+        /* event queue is cleared. Use of usleep() causes this issue */
+
+		while(XCheckMaskEvent(disp, StructureNotifyMask, &event) &&
+        event.xconfigure.width) {
+            /* Only change if width >0. Avoids desktop switch bug */
+            if((win_w != event.xconfigure.width) ||
+            (win_h != event.xconfigure.height)) {
                 win_w = event.xconfigure.width;
                 win_h = event.xconfigure.height;
+                bar_w = win_w - 40;
+                bar_h = win_h - 40;
+                printf("%dx%d\n", win_w, win_h);
+                resize = 1;
             }
-			bar_w = win_w - 40;
-			bar_h = win_h - 40;
-			printf("%dx%d\n", win_w, win_h);
 		}
 
-        XClearWindow(disp, win);	/* avoids redraw glitch */
-		/* Draw outlines */
-		XDrawRectangle(disp, win, DefaultGC(disp, 0),
-			bar_x, bar_y, bar_w, bar_h);
-		XFillRectangle(disp, win, DefaultGC(disp, 0),
-			bar_x, bar_y + (bar_h * 0.9), bar_w, (bar_h * 0.1) + 1);
+        /* Only re-draw text & outlines on expose/resize */
+        /* This reduces network traffic to X server */
 
-		/* Draw markers every 10 percent */
-		XSetForeground(disp, gc, 0x808080);
-		for(pos = bar_x + 2; pos < (bar_x + bar_w); pos += (bar_w * 0.1)){
-			XDrawLine(disp, win, gc, pos,
-				bar_y + (bar_h * 0.9), pos, bar_y + bar_h);
-		}
+        while(XCheckTypedEvent(disp, Expose, &event) || resize) {
+
+            if(resize)
+                printf("resized\n");
+            resize = 0;
+            printf("redrawing outline\n");
+            XClearWindow(disp, win);	/* avoids redraw glitch */
+            /* Draw outlines */
+            XDrawRectangle(disp, win, DefaultGC(disp, 0),
+                bar_x, bar_y, bar_w, bar_h);
+            XFillRectangle(disp, win, DefaultGC(disp, 0),
+                bar_x, bar_y + (bar_h * 0.9), bar_w, (bar_h * 0.1) + 1);
+
+            /* Draw markers every 10 percent */
+            XSetForeground(disp, gc, 0x808080);
+            for(pos = bar_x + 2; pos < (bar_x + bar_w); pos += (bar_w * 0.1)){
+                XDrawLine(disp, win, gc, pos,
+                    bar_y + (bar_h * 0.9), pos, bar_y + bar_h);
+
+            }
+            XSetForeground(disp, gc, 0); /* Black */
+            XDrawString(disp, win, gc, 20, 20, "CPU Usage:", 10);
+            XSetForeground(disp, gc, BLUE);
+            XDrawString(disp, win, gc, 150, 20, "user", 4);
+            XSetForeground(disp, gc, RED);
+            XDrawString(disp, win, gc, 200, 20, "sys", 3);
+            XSetForeground(disp, gc, YELLOW);
+            XDrawString(disp, win, gc, 250, 20, "intr", 4);
+            XSetForeground(disp, gc, CYAN);
+            XDrawString(disp, win, gc, 300, 20, "wait", 4);
+            XSetForeground(disp, gc, GREEN);
+            XDrawString(disp, win, gc, 350, 20, "idle", 4);
+        }
 
 		if(times > 1)	/* Skip first 2 frames until sane values loaded */
 			drawbar();
 		usleep(500000); /* This is bad practice, but it's simple */
 
-		/* printf("Queue: %d\n", XEventsQueued(disp, win)); */
+		printf("Queue: %d\n", XEventsQueued(disp, win));
 
 		/* save previous values */
 		old_sys = sys;
@@ -151,37 +190,30 @@ int main(int argc, char *argv[]) {
 
 void drawbar(void) {
 
-		XSetForeground(disp, gc, 0x000000);	/* Black */
-        XDrawString(disp, win, gc, 20, 20, "CPU Usage:", 10);
 		pos = bar_x + 1;	/* Reset position */
-		XSetForeground(disp, gc, 0x0000FF);	/* Blue */
+		XSetForeground(disp, gc, BLUE);
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* user */
 			us * bar_w, (bar_h * 0.9) - 1);
-        XDrawString(disp, win, gc, 150, 20, "user", 4);
 
 		pos = pos + (us * bar_w);
-		XSetForeground(disp, gc, 0xFF0000);	/* Red */
+		XSetForeground(disp, gc, RED);
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* system */
 			sy * bar_w, (bar_h * 0.9) - 1);
-        XDrawString(disp, win, gc, 200, 20, "sys", 3);
 
 		pos = pos + (sy * bar_w);
-		XSetForeground(disp, gc, 0xFFFF00);	/* Yellow */
+		XSetForeground(disp, gc, YELLOW);
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* irq */
 			in * bar_w, (bar_h * 0.9) - 1);
-        XDrawString(disp, win, gc, 250, 20, "intr", 4);
 
 		pos = pos + (in * bar_w);
-		XSetForeground(disp, gc, 0x00FFFF);	/* Cyan */
+		XSetForeground(disp, gc, CYAN);
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* iowait */
 			wa * bar_w, (bar_h * 0.9) - 1);
-        XDrawString(disp, win, gc, 300, 20, "wait", 4);
 
 		pos = pos + (wa * bar_w);
-		XSetForeground(disp, gc, 0x00FF00);	/* Green */
+		XSetForeground(disp, gc, GREEN);
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* idle */
 			bar_w - pos + 20, (bar_h * 0.9) - 1);
-        XDrawString(disp, win, gc, 350, 20, "idle", 4);
 
 		XFlush(disp);
 }
