@@ -92,7 +92,6 @@ int main(int argc, char *argv[]) {
 
 		total = (user - old_user) + (sys - old_sys) + (idle - old_idle) +
 			(irq - old_irq) + (wait - old_wait);
-		printf("tot: %d\n", total);
 
 		us = (user - old_user) / (float) total;
 		sy = (sys - old_sys) / (float) total;
@@ -109,10 +108,10 @@ int main(int argc, char *argv[]) {
 			bar_y = win_h * 0.2;
 			bar_w = win_w - 40;
 			bar_h = win_h * 0.7;
-			/* printf("%dx%d\n", win_w, win_h); */
-			XClearWindow(disp, win);	/* avoids redraw glitch */
+			printf("%dx%d\n", win_w, win_h);
 		}
 
+        XClearWindow(disp, win);	/* avoids redraw glitch */
 		/* Draw outlines */
 		XDrawRectangle(disp, win, DefaultGC(disp, 0),
 			bar_x, bar_y, bar_w, bar_h);
