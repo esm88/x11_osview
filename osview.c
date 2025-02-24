@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
 	XSizeHints *size_hints;
 	XTextProperty title;
 	XGCValues vals;
+    XSetWindowAttributes winattr;
 	void drawbar(void);
 	unsigned int user, sys, idle, wait, irq, total = 0;
 	unsigned int old_sys, old_user, old_idle, old_wait, old_irq;
@@ -55,6 +56,9 @@ int main(int argc, char *argv[]) {
 	/* Program is output only, so no input events needed */
 	XSelectInput(disp, win, ExposureMask | StructureNotifyMask);
 
+    winattr.backing_store = Always; /* Modern systems have plenty RAM */
+    XChangeWindowAttributes(disp, win, CWBackingStore, &winattr);
+
 	XMapWindow(disp, win);
 
 	do {
@@ -63,12 +67,14 @@ int main(int argc, char *argv[]) {
 
 	/* NOW we can draw into the window */
 
+
 	bar_x = 20;
 	bar_y = win_h * 0.2;
 	bar_w = win_w - 40;
 	bar_h = win_h * 0.7;
 	gc = XCreateGC(disp, win, 0, &vals);
 	XSetLineAttributes(disp, gc, 2, 0, 0, 0);
+    XSetFont(disp, gc, XLoadFont(disp, "-*-times-*-i-*-140-*"));
 
 	while(1) {
 
@@ -146,30 +152,37 @@ int main(int argc, char *argv[]) {
 
 void drawbar(void) {
 
+		XSetForeground(disp, gc, 0x000000);	/* Black */
+        XDrawString(disp, win, gc, 20, 20, "CPU Usage:", 10);
 		pos = bar_x + 1;	/* Reset position */
 		XSetForeground(disp, gc, 0x0000FF);	/* Blue */
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* user */
 			us * bar_w, (bar_h * 0.9) - 1);
+        XDrawString(disp, win, gc, 150, 20, "user", 4);
 
 		pos = pos + (us * bar_w);
 		XSetForeground(disp, gc, 0xFF0000);	/* Red */
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* system */
 			sy * bar_w, (bar_h * 0.9) - 1);
+        XDrawString(disp, win, gc, 200, 20, "sys", 3);
 
 		pos = pos + (sy * bar_w);
 		XSetForeground(disp, gc, 0xFFFF00);	/* Yellow */
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* irq */
 			in * bar_w, (bar_h * 0.9) - 1);
+        XDrawString(disp, win, gc, 250, 20, "intr", 4);
 
 		pos = pos + (in * bar_w);
 		XSetForeground(disp, gc, 0x00FFFF);	/* Cyan */
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* iowait */
 			wa * bar_w, (bar_h * 0.9) - 1);
+        XDrawString(disp, win, gc, 300, 20, "wait", 4);
 
 		pos = pos + (wa * bar_w);
 		XSetForeground(disp, gc, 0x00FF00);	/* Green */
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* idle */
 			bar_w - pos + 20, (bar_h * 0.9) - 1);
+        XDrawString(disp, win, gc, 350, 20, "idle", 4);
 
 		XFlush(disp);
 }
