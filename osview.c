@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	win_w = DisplayHeight(disp, 0) / 1.5;
-	win_h = win_w / 4;	/* 1:4 aspect ratio */
+	win_h = win_w / 8;	/* 1:8 aspect ratio */
 
 	win = XCreateSimpleWindow(disp, RootWindow(disp, 0), 0, 0, win_w,
 		win_h, 4, 0, 0x808080);	/* Use screen 0 of the display */
@@ -69,12 +69,12 @@ int main(int argc, char *argv[]) {
 
 
 	bar_x = 20;
-	bar_y = win_h * 0.2;
+	bar_y = 30;
 	bar_w = win_w - 40;
-	bar_h = win_h * 0.7;
+	bar_h = win_h - 40;
 	gc = XCreateGC(disp, win, 0, &vals);
 	XSetLineAttributes(disp, gc, 2, 0, 0, 0);
-    XSetFont(disp, gc, XLoadFont(disp, "-*-times-*-i-*-140-*"));
+    XSetFont(disp, gc, XLoadFont(disp, "-*-times-*-i-*-180-100-*"));
 
 	while(1) {
 
@@ -115,9 +115,8 @@ int main(int argc, char *argv[]) {
                 win_w = event.xconfigure.width;
                 win_h = event.xconfigure.height;
             }
-			bar_y = win_h * 0.2;
 			bar_w = win_w - 40;
-			bar_h = win_h * 0.7;
+			bar_h = win_h - 40;
 			printf("%dx%d\n", win_w, win_h);
 		}
 
