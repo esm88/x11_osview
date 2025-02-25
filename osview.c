@@ -18,13 +18,15 @@ Display *disp;
 Window win;
 XEvent event;
 GC gc;
-unsigned short win_w, win_h, bar_x, bar_y, bar_w, bar_h, pos, times = 0;
+unsigned short win_w, win_h, bar_x, bar_y, bar_w, bar_h, pos;
 float us, sy, id, wa, in;
 
 int main(int argc, char *argv[]) {
 
-    int resize = 1;
+    short resize = 1;
+    unsigned short frames = 0;
 	XSizeHints *size_hints;
+    XFontStruct *font;
 	XTextProperty title;
 	XGCValues vals;
     XSetWindowAttributes winattr;
@@ -53,7 +55,7 @@ int main(int argc, char *argv[]) {
 
 	size_hints = XAllocSizeHints();
 	size_hints->flags = PMinSize | PResizeInc;
-	size_hints->min_width = 400;
+	size_hints->min_width = 380;
 	size_hints->min_height = 50;
 	size_hints->width_inc = 10;
 	XSetWMNormalHints(disp, win, size_hints);
@@ -65,6 +67,7 @@ int main(int argc, char *argv[]) {
 	XSelectInput(disp, win, ExposureMask | StructureNotifyMask);
 
     winattr.backing_store = Always; /* Modern systems have _plenty_ RAM */
+    /* X Server is not guaranteed to honour this request! */
     XChangeWindowAttributes(disp, win, CWBackingStore, &winattr);
 
 	XMapWindow(disp, win);
@@ -75,21 +78,15 @@ int main(int argc, char *argv[]) {
 
 	/* NOW we can draw into the window */
 
-
 	bar_x = 20;
-	bar_y = 30;
 	bar_w = win_w - 40;
 	bar_h = win_h - 40;
 	gc = XCreateGC(disp, win, 0, &vals);
 	XSetLineAttributes(disp, gc, 2, 0, 0, 0);
-    XSetFont(disp, gc, XLoadFont(disp, "-*-times-*-i-*-180-100-*"));
-
-    /* Re-send the initial expose event */
-    XSendEvent(disp, win, True, ExposureMask, &event);
 
 	while(1) {
 
-		times++;
+		frames++;
 
 		fp = fopen("/proc/stat", "r");
 
@@ -120,7 +117,7 @@ int main(int argc, char *argv[]) {
 
 		/* Check for window resize (and other things) */
         /* CheckMaskEvent is used instead of CheckTypedEvent so that the */
-        /* event queue is cleared. Use of usleep() causes this issue */
+        /* event queue is cleared. Use of usleep() makes that a problem */
 
 		while(XCheckMaskEvent(disp, StructureNotifyMask, &event) &&
         event.xconfigure.width) {
@@ -137,12 +134,24 @@ int main(int argc, char *argv[]) {
 		}
 
         /* Only re-draw text & outlines on expose/resize */
-        /* This reduces network traffic to X server */
-
+        /* This reduces network traffic to the X server */
+        /* resize is intially 1, so this will execute first time through */
         while(XCheckTypedEvent(disp, Expose, &event) || resize) {
+            
+            if(resize) {
+            if(win_h < 70)
+                    font = XLoadQueryFont(disp, "-*-times-*-i-*-140-100-*");
+                else if(win_h < 120)
+                    font = XLoadQueryFont(disp, "-*-times-*-i-*-180-100-*");
+                else
+                    font = XLoadQueryFont(disp, "-*-times-*-i-*-240-100-*");
+                XSetFont(disp, gc, font->fid);
+                printf("a: %d, d: %d\n", font->ascent, font->descent);
+                bar_y = 1.1 * (font->ascent + font->descent);
 
-            if(resize)
+                bar_h = win_h - (1.8 * (font->ascent));
                 printf("resized\n");
+            }
             resize = 0;
             printf("redrawing outline\n");
             XClearWindow(disp, win);	/* avoids redraw glitch */
@@ -160,21 +169,22 @@ int main(int argc, char *argv[]) {
 
             }
             XSetForeground(disp, gc, 0); /* Black */
-            XDrawString(disp, win, gc, 20, 20, "CPU Usage:", 10);
+            XDrawString(disp, win, gc, pos = 20, font->ascent, "CPU Usage:", 10);
             XSetForeground(disp, gc, BLUE);
-            XDrawString(disp, win, gc, 150, 20, "user", 4);
+            XDrawString(disp, win, gc, pos += (font->ascent * 7), font->ascent, "user", 4);
             XSetForeground(disp, gc, RED);
-            XDrawString(disp, win, gc, 200, 20, "sys", 3);
+            XDrawString(disp, win, gc, pos += (font->ascent * 3), font->ascent, "sys", 3);
             XSetForeground(disp, gc, YELLOW);
-            XDrawString(disp, win, gc, 250, 20, "intr", 4);
+            XDrawString(disp, win, gc, pos += (font->ascent * 3), font->ascent, "intr", 4);
             XSetForeground(disp, gc, CYAN);
-            XDrawString(disp, win, gc, 300, 20, "wait", 4);
+            XDrawString(disp, win, gc, pos += (font->ascent * 3), font->ascent, "wait", 4);
             XSetForeground(disp, gc, GREEN);
-            XDrawString(disp, win, gc, 350, 20, "idle", 4);
+            XDrawString(disp, win, gc, pos+= (font->ascent * 3), font->ascent, "idle", 4);
         }
 
-		if(times > 1)	/* Skip first 2 frames until sane values loaded */
+		if(frames > 1)	/* Skip first 2 frames until sane values loaded */
 			drawbar();
+
 		usleep(500000); /* This is bad practice, but it's simple */
 
 		printf("Queue: %d\n", XEventsQueued(disp, win));
