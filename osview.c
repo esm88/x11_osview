@@ -6,6 +6,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 /* #include <X11/Xos.h> */
+#include <string.h>
 
 #define RED 0xFF0000
 #define GREEN 0x00FF00
@@ -23,6 +24,9 @@ float us, sy, id, wa, in;
 
 int main(int argc, char *argv[]) {
 
+    int colours[] = { 0, 0, BLUE, RED, YELLOW, CYAN, GREEN };
+    char *strings[] = { "", "CPU Usage:", "user", "sys", "intr", "wait",
+        "idle" };
     short resize = 1;
     unsigned short frames = 0;
 	XSizeHints *size_hints;
@@ -55,7 +59,7 @@ int main(int argc, char *argv[]) {
 
 	size_hints = XAllocSizeHints();
 	size_hints->flags = PMinSize | PResizeInc;
-	size_hints->min_width = 380;
+	size_hints->min_width = 350;
 	size_hints->min_height = 50;
 	size_hints->width_inc = 10;
 	XSetWMNormalHints(disp, win, size_hints);
@@ -146,7 +150,6 @@ int main(int argc, char *argv[]) {
                 else
                     font = XLoadQueryFont(disp, "-*-times-*-i-*-240-100-*");
                 XSetFont(disp, gc, font->fid);
-                printf("a: %d, d: %d\n", font->ascent, font->descent);
                 bar_y = 1.1 * (font->ascent + font->descent);
 
                 bar_h = win_h - (1.8 * (font->ascent));
@@ -169,25 +172,20 @@ int main(int argc, char *argv[]) {
 
             }
             XSetForeground(disp, gc, 0); /* Black */
-            XDrawString(disp, win, gc, pos = 20, font->ascent, "CPU Usage:", 10);
-            XSetForeground(disp, gc, BLUE);
-            XDrawString(disp, win, gc, pos += (font->ascent * 7), font->ascent, "user", 4);
-            XSetForeground(disp, gc, RED);
-            XDrawString(disp, win, gc, pos += (font->ascent * 3), font->ascent, "sys", 3);
-            XSetForeground(disp, gc, YELLOW);
-            XDrawString(disp, win, gc, pos += (font->ascent * 3), font->ascent, "intr", 4);
-            XSetForeground(disp, gc, CYAN);
-            XDrawString(disp, win, gc, pos += (font->ascent * 3), font->ascent, "wait", 4);
-            XSetForeground(disp, gc, GREEN);
-            XDrawString(disp, win, gc, pos+= (font->ascent * 3), font->ascent, "idle", 4);
+            pos = 20;
+
+            for(i = 1; i <= 6; i++) {
+                XSetForeground(disp, gc, colours[i]);
+                XDrawString(disp, win, gc, pos += (font->ascent *
+                    strlen(strings[i-1]) * 0.7), font->ascent, strings[i],
+                    strlen(strings[i]));
+            }
         }
 
 		if(frames > 1)	/* Skip first 2 frames until sane values loaded */
 			drawbar();
 
 		usleep(500000); /* This is bad practice, but it's simple */
-
-		printf("Queue: %d\n", XEventsQueued(disp, win));
 
 		/* save previous values */
 		old_sys = sys;
