@@ -26,8 +26,8 @@ short i;
 
 int main(int argc, char *argv[]) {
 
-    char *strings[] = { "", "CPU Usage:", "user", "sys", "intr", "wait",
-        "idle" };
+    char *strings[] = { "", "CPU Usage: ", "user ", "sys ", "intr ",
+        "wait ", "idle " };
     short resize = 1;
     unsigned short frames = 0;
 	XSizeHints *size_hints;
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 
 	size_hints = XAllocSizeHints();
 	size_hints->flags = PMinSize | PResizeInc;
-	size_hints->min_width = 350;
+	size_hints->min_width = 300;
 	size_hints->min_height = 50;
 	size_hints->width_inc = 10;
 	XSetWMNormalHints(disp, win, size_hints);
@@ -173,13 +173,14 @@ int main(int argc, char *argv[]) {
 
             }
             XSetForeground(disp, gc, 0); /* Black */
-            pos = 20;
 
+            /* Draw text */
+            pos = 20;
             for(i = 1; i <= 6; i++) {
                 XSetForeground(disp, gc, colours[i]);
-                XDrawString(disp, win, gc, pos += (font->ascent *
-                    strlen(strings[i-1]) * 0.7), font->ascent, strings[i],
+                XDrawString(disp, win, gc, pos , font->ascent, strings[i],
                     strlen(strings[i]));
+                pos += XTextWidth(font, strings[i], strlen(strings[i]));
             }
         }
 
