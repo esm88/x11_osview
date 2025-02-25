@@ -1,12 +1,14 @@
 /* x11_osview: a clone of gr_osview */
 /* Copyright (C) 2025, Ellie Neills */
-/* This program is a work in progress */
 
+#define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-/* #include <X11/Xos.h> */
+#include <X11/Xos.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define RED 0xFF0000
 #define GREEN 0x00FF00
@@ -29,9 +31,8 @@ int main(int argc, char *argv[]) {
 
     char *strings[] = { "", "CPU Usage: ", "user ", "sys ", "intr ",
         "wait ", "vm ", "idle " };
-    short resize = 1;
-    unsigned short frames = 0;
 	XSizeHints *size_hints;
+    XWMHints *wm_hints;
     XFontStruct *font;
 	XTextProperty title;
 	XGCValues vals;
@@ -39,20 +40,22 @@ int main(int argc, char *argv[]) {
 	void drawbar(void);
     unsigned int data[6];
     unsigned int old_data[6];
-    unsigned long total = 0;
+    unsigned int total = 0;
+    unsigned int frames = 0;
     char hostname[20];
     char *host = hostname;
-	FILE *fp;
-	int c, j;
 	char stats[10][20];
-
-    gethostname(&hostname, 19);
+	FILE *fp;
+	int c;
+    short j, resize = 1;
 
 	if(!(disp = XOpenDisplay(0))) {		/* Use $DISPLAY */
 		fprintf(stderr, "Error: Can't connect to X server\n" 
 			"Have you enabled X forwarding? (try 'ssh -X')\n");
 		return(1);
 	}
+
+    gethostname(hostname, 19);
 
 	win_w = DisplayHeight(disp, 0) / 1.5;
 	win_h = win_w / 8;	/* 1:8 aspect ratio */
@@ -77,11 +80,17 @@ int main(int argc, char *argv[]) {
     /* X Server is not guaranteed to honour this request! */
     XChangeWindowAttributes(disp, win, CWBackingStore, &winattr);
 
+    /* Don't steal focus - WM may ignore this */
+    wm_hints->flags = InputHint;
+    wm_hints->input = False;
+    XSetWMHints(disp, win, wm_hints);
+
 	XMapWindow(disp, win);
 
 	do {
 		XNextEvent(disp, &event);
 	} while (event.type != Expose);		/* Wait for first Expose event */
+
 
 	/* NOW we can draw into the window */
 
@@ -118,8 +127,6 @@ int main(int argc, char *argv[]) {
         for(i = 0; i < 6; i++)
             values[i] = (data[i] - old_data[i]) / (float) total;
 
-        printf("total: %d\n", total);
-
 		fclose(fp);
 
 		/* Check for window resize (and other things) */
@@ -135,7 +142,6 @@ int main(int argc, char *argv[]) {
                 win_h = event.xconfigure.height;
                 bar_w = win_w - 40;
                 bar_h = win_h - 40;
-                printf("%dx%d\n", win_w, win_h);
                 resize = 1;
             }
 		}
@@ -156,10 +162,8 @@ int main(int argc, char *argv[]) {
                 bar_y = 1.1 * (font->ascent + font->descent);
 
                 bar_h = win_h - (1.8 * (font->ascent));
-                printf("resized\n");
             }
             resize = 0;
-            printf("redrawing outline\n");
             XClearWindow(disp, win);	/* avoids redraw glitch */
             /* Draw outlines */
             XDrawRectangle(disp, win, DefaultGC(disp, 0),
@@ -172,9 +176,8 @@ int main(int argc, char *argv[]) {
             for(pos = bar_x + 2; pos < (bar_x + bar_w); pos += (bar_w * 0.1)){
                 XDrawLine(disp, win, gc, pos,
                     bar_y + (bar_h * 0.9), pos, bar_y + bar_h);
-
             }
-            XSetForeground(disp, gc, 0); /* Black */
+
 
             /* Draw text */
             pos = 20;
@@ -194,7 +197,6 @@ int main(int argc, char *argv[]) {
 		/* save previous values */
         for(i = 0; i < 6; i++) {
             old_data[i] = data[i];
-            printf("values: %f\n", values[i]);
         }
 	}
 }
