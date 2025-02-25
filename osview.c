@@ -14,20 +14,21 @@
 #define YELLOW 0xFFFF00
 #define CYAN 0x00FFFF
 #define GRAY 0x808080
+#define MAGENTA 0xFF00FF
 
 Display *disp;
 Window win;
 XEvent event;
 GC gc;
 unsigned short win_w, win_h, bar_x, bar_y, bar_w, bar_h, pos;
-int colours[] = { 0, 0, BLUE, RED, YELLOW, CYAN, GREEN };
-float values[5];
+int colours[] = { 0, 0, BLUE, RED, YELLOW, CYAN, MAGENTA, GREEN };
+float values[6];
 short i;
 
 int main(int argc, char *argv[]) {
 
     char *strings[] = { "", "CPU Usage: ", "user ", "sys ", "intr ",
-        "wait ", "idle " };
+        "wait ", "vm ", "idle " };
     short resize = 1;
     unsigned short frames = 0;
 	XSizeHints *size_hints;
@@ -36,8 +37,8 @@ int main(int argc, char *argv[]) {
 	XGCValues vals;
     XSetWindowAttributes winattr;
 	void drawbar(void);
-    unsigned int data[5];
-    unsigned int old_data[5];
+    unsigned int data[6];
+    unsigned int old_data[6];
     unsigned long total = 0;
     char hostname[20];
     char *host = hostname;
@@ -61,7 +62,7 @@ int main(int argc, char *argv[]) {
 
 	size_hints = XAllocSizeHints();
 	size_hints->flags = PMinSize | PResizeInc;
-	size_hints->min_width = 300;
+	size_hints->min_width = 320;
 	size_hints->min_height = 50;
 	size_hints->width_inc = 10;
 	XSetWMNormalHints(disp, win, size_hints);
@@ -96,7 +97,7 @@ int main(int argc, char *argv[]) {
 
 		fp = fopen("/proc/stat", "r");
 
-		for(i = 0; i < 11; i++){
+		for(i = 0; i < 12; i++){
 			j = 0;
 			while((c = getc(fp)) != ' ')
 				stats[i][j++] = c;
@@ -105,15 +106,16 @@ int main(int argc, char *argv[]) {
 
 		data[0] = atoi(stats[2]) + atoi(stats[3]); /* user */
 		data[1] = atoi(stats[4]); /* sys */
-		data[2] = atoi(stats[8]); /* irq */
+		data[2] = atoi(stats[7]) + atoi(stats[8]); /* irqs */
 		data[3] = atoi(stats[6]); /* iowait */
-		data[4] = atoi(stats[5]); /* idle */
+        data[4] = atoi(stats[10]) + atoi(stats[11]); /* guest */
+		data[5] = atoi(stats[5]); /* idle */
 
         total = 0;
-        for(i = 0; i < 5; i++)
+        for(i = 0; i < 6; i++)
             total += (data[i] - old_data[i]);
 
-        for(i = 0; i < 5; i++)
+        for(i = 0; i < 6; i++)
             values[i] = (data[i] - old_data[i]) / (float) total;
 
         printf("total: %d\n", total);
@@ -176,7 +178,7 @@ int main(int argc, char *argv[]) {
 
             /* Draw text */
             pos = 20;
-            for(i = 1; i <= 6; i++) {
+            for(i = 1; i <= 7; i++) {
                 XSetForeground(disp, gc, colours[i]);
                 XDrawString(disp, win, gc, pos , font->ascent, strings[i],
                     strlen(strings[i]));
@@ -190,7 +192,7 @@ int main(int argc, char *argv[]) {
 		usleep(500000); /* This is bad practice, but it's simple */
 
 		/* save previous values */
-        for(i = 0; i < 5; i++) {
+        for(i = 0; i < 6; i++) {
             old_data[i] = data[i];
             printf("values: %f\n", values[i]);
         }
@@ -200,7 +202,7 @@ int main(int argc, char *argv[]) {
 void drawbar(void) {
 
 		pos = bar_x + 1;	/* Reset position */
-        for(i = 0; i < 4; i++) {
+        for(i = 0; i < 5; i++) {
             XSetForeground(disp, gc, colours[i+2]);
             XFillRectangle(disp, win, gc, pos, bar_y + 1,
                 values[i] * bar_w, (bar_h * 0.9) - 1);
