@@ -81,6 +81,7 @@ int main(int argc, char *argv[]) {
     XChangeWindowAttributes(disp, win, CWBackingStore, &winattr);
 
     /* Don't steal focus - WM may ignore this */
+    wm_hints = XAllocWMHints();
     wm_hints->flags = InputHint;
     wm_hints->input = False;
     XSetWMHints(disp, win, wm_hints);
