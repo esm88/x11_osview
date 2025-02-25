@@ -20,11 +20,12 @@ Window win;
 XEvent event;
 GC gc;
 unsigned short win_w, win_h, bar_x, bar_y, bar_w, bar_h, pos;
-float us, sy, id, wa, in;
+int colours[] = { 0, 0, BLUE, RED, YELLOW, CYAN, GREEN };
+float values[5];
+short i;
 
 int main(int argc, char *argv[]) {
 
-    int colours[] = { 0, 0, BLUE, RED, YELLOW, CYAN, GREEN };
     char *strings[] = { "", "CPU Usage:", "user", "sys", "intr", "wait",
         "idle" };
     short resize = 1;
@@ -35,12 +36,13 @@ int main(int argc, char *argv[]) {
 	XGCValues vals;
     XSetWindowAttributes winattr;
 	void drawbar(void);
-	unsigned int user, sys, idle, wait, irq, total = 0;
-	unsigned int old_sys, old_user, old_idle, old_wait, old_irq;
+    unsigned int data[5];
+    unsigned int old_data[5];
+    unsigned long total = 0;
     char hostname[20];
     char *host = hostname;
 	FILE *fp;
-	int c, i, j;
+	int c, j;
 	char stats[10][20];
 
     gethostname(&hostname, 19);
@@ -96,26 +98,25 @@ int main(int argc, char *argv[]) {
 
 		for(i = 0; i < 11; i++){
 			j = 0;
-			while((c = getc(fp)) != ' ') {
+			while((c = getc(fp)) != ' ')
 				stats[i][j++] = c;
-			}
 			stats[i][j] = '\0';
 		}
 
-		user = atoi(stats[2]) + atoi(stats[3]);
-		sys = atoi(stats[4]);
-		idle = atoi(stats[5]);
-		wait = atoi(stats[6]);
-		irq = atoi(stats[8]);
+		data[0] = atoi(stats[2]) + atoi(stats[3]); /* user */
+		data[1] = atoi(stats[4]); /* sys */
+		data[2] = atoi(stats[8]); /* irq */
+		data[3] = atoi(stats[6]); /* iowait */
+		data[4] = atoi(stats[5]); /* idle */
 
-		total = (user - old_user) + (sys - old_sys) + (idle - old_idle) +
-			(irq - old_irq) + (wait - old_wait);
+        total = 0;
+        for(i = 0; i < 5; i++)
+            total += (data[i] - old_data[i]);
 
-		us = (user - old_user) / (float) total;
-		sy = (sys - old_sys) / (float) total;
-		id = (idle - old_idle) / (float) total;
-		wa = (wait - old_wait) / (float) total;
-		in = (irq - old_irq) / (float) total;
+        for(i = 0; i < 5; i++)
+            values[i] = (data[i] - old_data[i]) / (float) total;
+
+        printf("total: %d\n", total);
 
 		fclose(fp);
 
@@ -165,7 +166,7 @@ int main(int argc, char *argv[]) {
                 bar_x, bar_y + (bar_h * 0.9), bar_w, (bar_h * 0.1) + 1);
 
             /* Draw markers every 10 percent */
-            XSetForeground(disp, gc, 0x808080);
+            XSetForeground(disp, gc, GRAY);
             for(pos = bar_x + 2; pos < (bar_x + bar_w); pos += (bar_w * 0.1)){
                 XDrawLine(disp, win, gc, pos,
                     bar_y + (bar_h * 0.9), pos, bar_y + bar_h);
@@ -188,37 +189,23 @@ int main(int argc, char *argv[]) {
 		usleep(500000); /* This is bad practice, but it's simple */
 
 		/* save previous values */
-		old_sys = sys;
-		old_idle = idle;
-		old_user = user;
-		old_wait = wait;
-		old_irq = irq;
+        for(i = 0; i < 5; i++) {
+            old_data[i] = data[i];
+            printf("values: %f\n", values[i]);
+        }
 	}
 }
 
 void drawbar(void) {
 
 		pos = bar_x + 1;	/* Reset position */
-		XSetForeground(disp, gc, BLUE);
-		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* user */
-			us * bar_w, (bar_h * 0.9) - 1);
+        for(i = 0; i < 4; i++) {
+            XSetForeground(disp, gc, colours[i+2]);
+            XFillRectangle(disp, win, gc, pos, bar_y + 1,
+                values[i] * bar_w, (bar_h * 0.9) - 1);
+            pos = pos + (values[i] * bar_w);
+        }
 
-		pos = pos + (us * bar_w);
-		XSetForeground(disp, gc, RED);
-		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* system */
-			sy * bar_w, (bar_h * 0.9) - 1);
-
-		pos = pos + (sy * bar_w);
-		XSetForeground(disp, gc, YELLOW);
-		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* irq */
-			in * bar_w, (bar_h * 0.9) - 1);
-
-		pos = pos + (in * bar_w);
-		XSetForeground(disp, gc, CYAN);
-		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* iowait */
-			wa * bar_w, (bar_h * 0.9) - 1);
-
-		pos = pos + (wa * bar_w);
 		XSetForeground(disp, gc, GREEN);
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* idle */
 			bar_w - pos + 20, (bar_h * 0.9) - 1);
