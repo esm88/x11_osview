@@ -15,15 +15,16 @@ Window win;
 XEvent event;
 GC gc;
 unsigned short win_w, win_h, bar_x, bar_y, bar_w, bar_h, pos;
-char *colours[] = { "", "black", "blue", "red", "yellow", "cyan", "magenta",
-    "green" };
+char *colours[] = { "black", "blue", "red", "yellow", "cyan", "magenta",
+    "green", "gray" };
 float values[6];
 short i;
-XColor screen_col, exact_col;
+XColor screen_col[8], exact_col;
+XColor temp_col;
 
 int main(int argc, char *argv[]) {
 
-    char *strings[] = { "", "CPU Usage: ", "user ", "sys ", "intr ",
+    char *strings[] = { "CPU Usage: ", "user ", "sys ", "intr ",
         "wait ", "vm ", "idle " };
 	XSizeHints *size_hints;
     XWMHints *wm_hints;
@@ -54,10 +55,12 @@ int main(int argc, char *argv[]) {
 	win_w = DisplayHeight(disp, 0) / 1.5;
 	win_h = win_w / 8;	/* 1:8 aspect ratio */
 
-    XAllocNamedColor(disp, DefaultColormap(disp, 0), "gray",
-        &screen_col, &exact_col);
+    for(i = 0; i < 8; i++)
+        XAllocNamedColor(disp, DefaultColormap(disp, 0), colours[i],
+            &screen_col[i], &exact_col);
+
 	win = XCreateSimpleWindow(disp, RootWindow(disp, 0), 0, 0, win_w,
-		win_h, 4, 0, screen_col.pixel);	/* Use screen 0 of the display */
+		win_h, 4, 0, screen_col[7].pixel); /* Use screen 0 of the display */
 
 	size_hints = XAllocSizeHints();
 	size_hints->flags = PMinSize | PResizeInc;
@@ -88,9 +91,7 @@ int main(int argc, char *argv[]) {
 		XNextEvent(disp, &event);
 	} while (event.type != Expose);		/* Wait for first Expose event */
 
-
 	/* NOW we can draw into the window */
-
 	bar_x = 20;
 	bar_w = win_w - 40;
 	bar_h = win_h - 40;
@@ -169,21 +170,16 @@ int main(int argc, char *argv[]) {
                 bar_x, bar_y + (bar_h * 0.9), bar_w, (bar_h * 0.1) + 1);
 
             /* Draw markers every 10 percent */
-            XAllocNamedColor(disp, DefaultColormap(disp, 0), "gray",
-                &screen_col, &exact_col);
-            XSetForeground(disp, gc, screen_col.pixel);
+            XSetForeground(disp, gc, screen_col[7].pixel); /* gray */
             for(pos = bar_x + 2; pos < (bar_x + bar_w); pos += (bar_w * 0.1)){
                 XDrawLine(disp, win, gc, pos,
                     bar_y + (bar_h * 0.9), pos, bar_y + bar_h);
             }
 
-
             /* Draw text */
             pos = 20;
-            for(i = 1; i <= 7; i++) {
-                XAllocNamedColor(disp, DefaultColormap(disp, 0),
-                    colours[i], &screen_col, &exact_col);
-                XSetForeground(disp, gc, screen_col.pixel);
+            for(i = 0; i < 7; i++) {
+                XSetForeground(disp, gc, screen_col[i].pixel);
                 XDrawString(disp, win, gc, pos , font->ascent, strings[i],
                     strlen(strings[i]));
                 pos += XTextWidth(font, strings[i], strlen(strings[i]));
@@ -206,17 +202,13 @@ void drawbar(void) {
 
 		pos = bar_x + 1;	/* Reset position */
         for(i = 0; i < 5; i++) {
-            XAllocNamedColor(disp, DefaultColormap(disp, 0),
-                colours[i+2], &screen_col, &exact_col);
-            XSetForeground(disp, gc, screen_col.pixel);
+            XSetForeground(disp, gc, screen_col[i+1].pixel);
             XFillRectangle(disp, win, gc, pos, bar_y + 1,
                 values[i] * bar_w, (bar_h * 0.9) - 1);
             pos = pos + (values[i] * bar_w);
         }
 
-        XAllocNamedColor(disp, DefaultColormap(disp, 0), "green",
-            &screen_col, &exact_col);
-		XSetForeground(disp, gc, screen_col.pixel);
+		XSetForeground(disp, gc, screen_col[6].pixel);  /* green */
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* idle */
 			bar_w - pos + 20, (bar_h * 0.9) - 1);
 
