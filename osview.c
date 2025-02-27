@@ -10,6 +10,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#define GREEN 6
+#define GRAY 7
+
 Display *disp;
 Window win;
 XEvent event;
@@ -55,12 +58,13 @@ int main(int argc, char *argv[]) {
 	win_w = DisplayHeight(disp, 0) / 1.5;
 	win_h = win_w / 8;	/* 1:8 aspect ratio */
 
+    /* Store the colours _locally_ */
     for(i = 0; i < 8; i++)
         XAllocNamedColor(disp, DefaultColormap(disp, 0), colours[i],
             &screen_col[i], &exact_col);
 
 	win = XCreateSimpleWindow(disp, RootWindow(disp, 0), 0, 0, win_w,
-		win_h, 4, 0, screen_col[7].pixel); /* Use screen 0 of the display */
+		win_h, 4, 0, screen_col[GRAY].pixel); /* Use screen 0 of display */
 
 	size_hints = XAllocSizeHints();
 	size_hints->flags = PMinSize | PResizeInc;
@@ -170,7 +174,7 @@ int main(int argc, char *argv[]) {
                 bar_x, bar_y + (bar_h * 0.9), bar_w, (bar_h * 0.1) + 1);
 
             /* Draw markers every 10 percent */
-            XSetForeground(disp, gc, screen_col[7].pixel); /* gray */
+            XSetForeground(disp, gc, screen_col[GRAY].pixel);
             for(pos = bar_x + 2; pos < (bar_x + bar_w); pos += (bar_w * 0.1)){
                 XDrawLine(disp, win, gc, pos,
                     bar_y + (bar_h * 0.9), pos, bar_y + bar_h);
@@ -208,7 +212,7 @@ void drawbar(void) {
             pos = pos + (values[i] * bar_w);
         }
 
-		XSetForeground(disp, gc, screen_col[6].pixel);  /* green */
+		XSetForeground(disp, gc, screen_col[GREEN].pixel);  /* green */
 		XFillRectangle(disp, win, gc, pos, bar_y + 1,	/* idle */
 			bar_w - pos + 20, (bar_h * 0.9) - 1);
 
