@@ -67,7 +67,11 @@ int main(int argc, char *argv[]) {
 	win_h, 4, 0, screen_col[GRAY].pixel); /* Use screen 0 of display */
 
     size_hints = XAllocSizeHints();
-    size_hints->flags = PMinSize | PResizeInc;
+    size_hints->flags = PMinSize | PResizeInc | PAspect;
+    size_hints->min_aspect.x = 8;
+    size_hints->min_aspect.y = 1;
+    size_hints->max_aspect.x = 8;
+    size_hints->max_aspect.y = 1;
     size_hints->min_width = 320;
     size_hints->min_height = 50;
     size_hints->width_inc = 10;
